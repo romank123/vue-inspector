@@ -1281,38 +1281,56 @@
     // Добавляем новый обработчик
     document.addEventListener("click", handleInspectorClick, true);
 
+    // Добавляем эту переменную для отслеживания ранее подсвеченного элемента
+    let previousHighlightedElement = null;
+
     function handleInspectorClick(event) {
       if (!event.altKey) return; // Только для Alt+Click
 
-      console.log("[Vue Inspector] Alt+Click detected on:", event.target);
+      console.log("[Vue Inspector] Alt+Click обнаружен на:", event.target);
 
       // Предотвращаем стандартное поведение
       event.preventDefault();
       event.stopPropagation();
 
-      // Добавляем временное подсветку для кликнутого элемента
-      const originalOutline = event.target.style.outline;
+      // Удаляем подсветку с предыдущего элемента, если он существует
+      if (
+        previousHighlightedElement &&
+        previousHighlightedElement !== event.target
+      ) {
+        previousHighlightedElement.style.outline =
+          previousHighlightedElement._originalOutline || "";
+        delete previousHighlightedElement._originalOutline;
+      }
+
+      // Сохраняем оригинальный стиль контура перед его изменением
+      event.target._originalOutline = event.target.style.outline;
+
+      // Добавляем подсветку к кликнутому элементу
       event.target.style.outline = "2px solid #41b883";
+
+      // Обновляем ссылку на текущий подсвеченный элемент
+      previousHighlightedElement = event.target;
 
       // Ищем компонент Vue
       const component = findVueComponentForElement(event.target);
 
       if (component) {
-        console.log("[Vue Inspector] Found component to inspect:", component);
+        console.log(
+          "[Vue Inspector] Найден компонент для инспекции:",
+          component
+        );
         inspectComponent(component);
       } else {
         console.warn(
-          "[Vue Inspector] No Vue component found for clicked element"
+          "[Vue Inspector] Компонент Vue не найден для кликнутого элемента"
         );
-
         // Показываем уведомление пользователю
         showNotification("Компонент Vue не найден для этого элемента");
       }
 
-      // Удаляем подсветку через секунду
-      setTimeout(() => {
-        event.target.style.outline = originalOutline;
-      }, 1000);
+      // Мы НЕ будем удалять подсветку после таймаута,
+      // так как хотим, чтобы она оставалась видимой до клика на другой элемент
     }
 
     // Функция для отображения временного уведомления
@@ -1603,6 +1621,14 @@
     },
     inspect(component) {
       inspectComponent(component);
+    },
+    clearHighlights() {
+      if (previousHighlightedElement) {
+        previousHighlightedElement.style.outline =
+          previousHighlightedElement._originalOutline || "";
+        delete previousHighlightedElement._originalOutline;
+        previousHighlightedElement = null;
+      }
     },
   };
 
