@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vue Inspector</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="popup-container">
+      <header class="popup-header">
+        <h1>Vue Inspector</h1>
+        <div class="vue-status" id="vue-status">
+          <span class="status-indicator" id="status-indicator"></span>
+          <span class="status-text" id="status-text">Проверка...</span>
+        </div>
+      </header>
+
+      <div class="popup-content">
+        <div class="control-panel">
+          <label class="switch">
+            <input type="checkbox" id="inspector-toggle" />
+            <span class="slider round"></span>
+          </label>
+          <span class="toggle-label">Включить инспектор</span>
+        </div>
+
+        <div class="shortcuts">
+          <h2>Инструкция</h2>
+          <ul>
+            <li>
+              <strong>Инспектирование по Alt+Click</strong>: Удерживая Alt,
+              кликните на элемент для его инспектирования
+            </li>
+          </ul>
+          <h2>Горячие клавиши</h2>
+          <ul>
+            <li>
+              <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> - Показать/скрыть
+              инспектор
+            </li>
+            <li>
+              <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> -
+              Свернуть/развернуть инспектор
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <footer class="popup-footer">
+        <p>Vue Inspector <span id="version">v1.0</span></p>
+      </footer>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

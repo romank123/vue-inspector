@@ -1,0 +1,165 @@
+/* popup/popup.css */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    margin: 0;
+    padding: 0;
+    width: 300px;
+    color: #2c3e50;
+}
+
+.popup-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 250px;
+}
+
+.popup-header {
+    background-color: #41b883;
+    color: white;
+    padding: 10px 15px;
+    border-bottom: 1px solid #35495e;
+}
+
+.popup-header h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.vue-status {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+    background-color: #ccc;
+}
+
+.status-indicator.detected {
+    background-color: #41b883;
+}
+
+.status-indicator.not-detected {
+    background-color: #ff5252;
+}
+
+.popup-content {
+    padding: 15px;
+    flex-grow: 1;
+}
+
+.control-panel {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.toggle-label {
+    margin-left: 10px;
+    font-weight: 500;
+}
+
+/* Стили для переключателя */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked+.slider {
+    background-color: #41b883;
+}
+
+input:focus+.slider {
+    box-shadow: 0 0 1px #41b883;
+}
+
+input:checked+.slider:before {
+    transform: translateX(26px);
+}
+
+.slider.round {
+    border-radius: 24px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+.shortcuts {
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+}
+
+.shortcuts h2 {
+    font-size: 14px;
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+
+.shortcuts ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.shortcuts li {
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+kbd {
+    display: inline-block;
+    padding: 2px 4px;
+    font-size: 11px;
+    line-height: 10px;
+    color: #444d56;
+    background-color: #fafbfc;
+    border: 1px solid #d1d5da;
+    border-radius: 3px;
+    box-shadow: inset 0 -1px 0 #d1d5da;
+}
+
+.popup-footer {
+    border-top: 1px solid #eee;
+    padding: 10px 15px;
+    text-align: center;
+    font-size: 11px;
+    color: #999;
+}
