@@ -605,37 +605,85 @@
     saveSettings();
   }
 
-  // Функция для инспектирования компонента Vue
+  // Улучшенная функция inspectComponent
   function inspectComponent(component) {
     if (!component) return;
 
+    console.log("[Vue Inspector] Inspecting component:", component);
+
     try {
-      // Получаем имя компонента
+      // Более надежное определение имени компонента
       let componentName = "Anonymous Component";
-      if (component.$options && component.$options.name) {
-        componentName = component.$options.name;
-      } else if (component.$vnode && component.$vnode.tag) {
-        componentName = component.$vnode.tag.split("/").pop();
+
+      // Vue 3 Composition API и Options API
+      if (component.$options) {
+        // Options API
+        if (component.$options.name) {
+          componentName = component.$options.name;
+        } else if (component.$options.__file) {
+          // Получаем имя из пути к файлу
+          componentName = component.$options.__file
+            .split("/")
+            .pop()
+            .split(".")[0];
+        }
+      } else if (component.$.type) {
+        // Vue 3 Composition API
+        if (typeof component.$.type === "object" && component.$.type.name) {
+          componentName = component.$.type.name;
+        } else if (
+          typeof component.$.type === "function" &&
+          component.$.type.name
+        ) {
+          componentName = component.$.type.name;
+        }
       }
 
       // Получаем props компонента
       const props = {};
+
+      // Vue 3 Options API
       if (component.$props) {
         Object.keys(component.$props).forEach((key) => {
           props[key] = component.$props[key];
         });
       }
+      // Vue 3 Composition API
+      else if (component.$ && component.$.props) {
+        Object.keys(component.$.props).forEach((key) => {
+          props[key] = component.$.props[key];
+        });
+      }
 
       // Получаем data компонента
       const data = {};
+
+      // Vue 3 Options API
       if (component.$data) {
         Object.keys(component.$data).forEach((key) => {
-          // Исключаем реактивные объекты Vue
           if (key !== "__ob__") {
             data[key] = component.$data[key];
           }
         });
       }
+      // Vue 3 Composition API
+      else if (component.$ && component.$.data) {
+        Object.keys(component.$.data).forEach((key) => {
+          data[key] = component.$.data[key];
+        });
+      }
+      // Попытка получить setupState для Composition API
+      else if (component.$ && component.$.setupState) {
+        Object.keys(component.$.setupState).forEach((key) => {
+          data[key] = component.$.setupState[key];
+        });
+      }
+
+      console.log("[Vue Inspector] Component info:", {
+        name: componentName,
+        props: Object.keys(props).length > 0 ? props : null,
+        data: Object.keys(data).length > 0 ? data : null,
+      });
 
       // Обновляем состояние инспектора
       inspectorState.activeComponentName = componentName;
@@ -651,17 +699,47 @@
     }
   }
 
-  // Функция для поиска Vue компонента по элементу DOM
+  // Улучшенная функция поиска компонента Vue для элемента DOM
   function findVueComponentForElement(element) {
-    let maxIterations = 10; // Ограничиваем количество итераций
+    let maxIterations = 10;
+    console.log(
+      "[Vue Inspector] Searching Vue component for element:",
+      element
+    );
 
     while (element && maxIterations > 0) {
-      // Проверяем, есть ли у элемента свойство __vue__
-      const comp =
-        element.__vue__ ||
-        (element.__vue_app__ && element.__vue_app__._instance);
+      // Vue 2
+      const comp = element.__vue__;
       if (comp) {
+        console.log("[Vue Inspector] Found Vue 2 component:", comp);
         return comp;
+      }
+
+      // Vue 3
+      const vnode = element.__vnode;
+      if (vnode && vnode.component) {
+        console.log(
+          "[Vue Inspector] Found Vue 3 component via __vnode:",
+          vnode.component
+        );
+        return vnode.component;
+      }
+
+      // Vue 3 (альтернативный способ)
+      if (element.__vue_app__ && element.__vue_app__._instance) {
+        const instance = element.__vue_app__._instance;
+        console.log("[Vue Inspector] Found Vue 3 root instance:", instance);
+        return instance;
+      }
+
+      // Альтернативная проверка для Vue 3
+      const internalInstance = element.__vueParentComponent;
+      if (internalInstance) {
+        console.log(
+          "[Vue Inspector] Found Vue 3 parent component:",
+          internalInstance
+        );
+        return internalInstance.proxy || internalInstance;
       }
 
       // Поднимаемся вверх по DOM
@@ -669,6 +747,7 @@
       maxIterations--;
     }
 
+    console.log("[Vue Inspector] No Vue component found");
     return null;
   }
 
@@ -677,14 +756,31 @@
     document.addEventListener(
       "click",
       function (event) {
-        // Проверяем нажатие Alt
         if (event.altKey) {
-          // Находим компонент Vue
+          console.log("[Vue Inspector] Alt+Click detected on:", event.target);
+
+          // Проверяем наличие атрибутов data-v-*
+          const dataVAttrs = Array.from(event.target.attributes).filter(
+            (attr) => attr.name.startsWith("data-v-")
+          );
+
+          if (dataVAttrs.length > 0) {
+            console.log(
+              "[Vue Inspector] Element has Vue attributes:",
+              dataVAttrs
+            );
+          }
+
           const component = findVueComponentForElement(event.target);
           if (component) {
+            console.log("[Vue Inspector] Found component:", component);
             event.preventDefault();
             event.stopPropagation();
             inspectComponent(component);
+          } else {
+            console.warn(
+              "[Vue Inspector] No Vue component found for this element"
+            );
           }
         }
       },
@@ -692,8 +788,71 @@
     );
   }
 
+  // Добавьте эту функцию в vue-inspector.js
+  function scanForVueComponents() {
+    console.log("[Vue Inspector] Scanning for Vue elements...");
+
+    // Ищем элементы с атрибутами data-v-*
+    const vueElements = document.querySelectorAll("[data-v-]");
+    if (vueElements.length > 0) {
+      console.log(
+        "[Vue Inspector] Found elements with Vue scoped CSS:",
+        vueElements.length
+      );
+
+      // Проверяем каждый элемент
+      vueElements.forEach((el, index) => {
+        if (index < 5) {
+          // Ограничиваем количество элементов для проверки
+          const component = findVueComponentForElement(el);
+          if (component) {
+            console.log(
+              `[Vue Inspector] Found component for element with data-v-:`,
+              component
+            );
+            return;
+          }
+        }
+      });
+    }
+
+    // Ищем элементы с атрибутом data-v-app
+    const appElements = document.querySelectorAll("[data-v-app]");
+    if (appElements.length > 0) {
+      console.log(
+        "[Vue Inspector] Found Vue 3 app elements:",
+        appElements.length
+      );
+    }
+  }
+
   // Инициализируем инструментирование Vue
   function instrumentVue() {
+    console.log("[Vue Inspector] Starting Vue instrumentation");
+
+    // Перехватываем Vue 3 createApp
+    if (window.Vue && window.Vue.createApp) {
+      const originalCreateApp = window.Vue.createApp;
+      window.Vue.createApp = function (...args) {
+        const app = originalCreateApp.apply(this, args);
+        console.log("[Vue Inspector] Intercepted Vue 3 createApp:", app);
+
+        // Добавляем глобальный миксин для Vue 3
+        app.mixin({
+          mounted() {
+            console.log("[Vue Inspector] Component mounted:", this);
+            // Добавляем метод $inspectComponent для компонентов
+            this.$inspectComponent = function () {
+              inspectComponent(this);
+            };
+          },
+        });
+
+        return app;
+      };
+
+      console.log("[Vue Inspector] Instrumented Vue 3 createApp");
+    }
     // Ищем глобальный экземпляр Vue
     const Vue = window.Vue;
 
@@ -735,6 +894,9 @@
 
     // Создаем инспектор
     createInspector();
+
+    // Сканируем DOM на наличие компонентов Vue
+    scanForVueComponents();
 
     // Отправляем сообщение о готовности
     window.postMessage(

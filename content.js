@@ -1,118 +1,138 @@
-// content.js - скрипт, выполняющийся на целевой странице
+// content.js - Улучшенная версия
+let inspectorInjected = false;
 
-// Определяем, есть ли Vue на странице
+// Улучшенное обнаружение Vue
 function detectVue() {
   return new Promise((resolve) => {
-    // Проверяем наличие Vue каждые 500мс
+    // Пытаемся найти Vue немедленно
+    if (
+      window.__VUE__ ||
+      window.__vue__ ||
+      document.querySelector("[data-v-app]") ||
+      !!window.Vue
+    ) {
+      resolve(true);
+      return;
+    }
+
+    // Если не нашли сразу, проверяем каждые 300мс
     const checkInterval = setInterval(() => {
-      const hasVue =
+      if (
         window.__VUE__ ||
         window.__vue__ ||
-        window.__VUE_DEVTOOLS_GLOBAL_HOOK__ ||
-        document.querySelector("[data-v-app]"); // Проверяем атрибут Vue 3
-
-      if (hasVue) {
+        document.querySelector("[data-v-app]") ||
+        !!window.Vue
+      ) {
         clearInterval(checkInterval);
         resolve(true);
       }
-    }, 500);
+    }, 300);
 
-    // Максимальное время ожидания - 5 секунд
+    // Максимальное время ожидания
     setTimeout(() => {
       clearInterval(checkInterval);
       resolve(false);
-    }, 5000);
+    }, 3000);
   });
 }
 
-// Проверяем, был ли инспектор уже внедрен
-let inspectorInjected = false;
-
-// Внедряем инспектор на страницу
+// Инъекция инспектора
 function injectInspector() {
   if (inspectorInjected) return;
 
-  // Создаем скрипт для внедрения инспектора
-  const script = document.createElement("script");
-  script.src = chrome.runtime.getURL("injected/vue-inspector.js");
-  (document.head || document.documentElement).appendChild(script);
+  console.log("[Vue Inspector] Injecting inspector...");
+
+  // Создаем контейнер для инспектора
+  if (!document.getElementById("vue-inspector-container")) {
+    const container = document.createElement("div");
+    container.id = "vue-inspector-container";
+    document.body.appendChild(container);
+  }
 
   // Добавляем стили
   const styleLink = document.createElement("link");
   styleLink.rel = "stylesheet";
   styleLink.href = chrome.runtime.getURL("injected/vue-inspector.css");
-  (document.head || document.documentElement).appendChild(styleLink);
+  document.head.appendChild(styleLink);
 
-  // Удаляем скрипт после загрузки
-  script.onload = function () {
-    script.remove();
-    inspectorInjected = true;
+  // Создаем скрипт для внедрения инспектора
+  const script = document.createElement("script");
+  script.src = chrome.runtime.getURL("injected/vue-inspector.js");
+  document.head.appendChild(script);
 
-    // Создаем элемент-контейнер для инспектора, если его еще нет
-    if (!document.getElementById("vue-inspector-container")) {
-      const container = document.createElement("div");
-      container.id = "vue-inspector-container";
-      document.body.appendChild(container);
-    }
+  // Отмечаем, что инспектор был внедрен
+  inspectorInjected = true;
 
-    // Отправляем команду для инициализации инспектора
+  // Отправляем сообщение о внедрении
+  setTimeout(() => {
     window.postMessage(
-      { source: "vue-inspector-extension", action: "init" },
+      {
+        source: "vue-inspector-extension",
+        action: "init",
+      },
       "*"
     );
-  };
+  }, 100);
 }
 
-// Переключение состояния инспектора
-function toggleInspector(enabled) {
-  // Если инспектор еще не внедрен, делаем это
-  if (!inspectorInjected && enabled) {
-    injectInspector();
-  }
-
-  // Отправляем сообщение странице
-  window.postMessage(
-    {
-      source: "vue-inspector-extension",
-      action: "toggleInspector",
-      enabled: enabled,
-    },
-    "*"
-  );
-}
-
-// Получаем сообщения от background.js
+// Улучшенная коммуникация
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log("[Vue Inspector] Message received:", request);
+
   if (request.action === "toggleInspector") {
-    toggleInspector(request.enabled);
+    console.log("[Vue Inspector] Toggling inspector:", request.enabled);
+
+    if (request.enabled && !inspectorInjected) {
+      injectInspector();
+    }
+
+    window.postMessage(
+      {
+        source: "vue-inspector-extension",
+        action: "toggleInspector",
+        enabled: request.enabled,
+      },
+      "*"
+    );
+
+    sendResponse({ success: true });
   }
+
   return true;
 });
 
-// Слушаем сообщения от страницы
+// Обработка сообщений от внедренного скрипта
 window.addEventListener("message", (event) => {
   if (event.data && event.data.source === "vue-inspector-page") {
-    if (event.data.action === "vueDetected") {
-      chrome.runtime.sendMessage({ action: "vueDetected" });
+    console.log("[Vue Inspector] Page message:", event.data);
+
+    if (
+      event.data.action === "vueDetected" ||
+      event.data.action === "inspectorReady"
+    ) {
+      chrome.runtime.sendMessage(event.data);
     }
   }
 });
 
-// Основная функция инициализации
-async function init() {
+// Инициализация
+(async function init() {
+  console.log("[Vue Inspector] Initializing...");
+
   const hasVue = await detectVue();
+
   if (hasVue) {
-    // Сообщаем background.js о наличии Vue
+    console.log("[Vue Inspector] Vue detected");
     chrome.runtime.sendMessage({ action: "vueDetected" });
 
     // Проверяем, должен ли инспектор быть включен
     chrome.storage.local.get(["inspectorEnabled"], (result) => {
       if (result.inspectorEnabled) {
+        console.log("[Vue Inspector] Inspector is enabled, injecting...");
         injectInspector();
       }
     });
+  } else {
+    console.log("[Vue Inspector] Vue not detected");
   }
-}
-
-// Запускаем инициализацию
-init();
+})();
